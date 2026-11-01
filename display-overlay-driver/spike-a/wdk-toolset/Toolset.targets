@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Reconstructed WindowsKernelModeDriver10.0 toolset shim (targets side).
+  See Toolset.props for why this shim exists. It redirects to the v143 linker/task wiring,
+  then imports the WDK driver build targets (CL/LIB/LINK/WPP/Inf/Sign tasks). WindowsDriver.
+  Common.targets self-imports WindowsDriver.KernelMode.CX.targets, masm.targets,
+  windowsdriver.$(Platform).targets, and windowsdriver.Sdv.targets as needed.
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <IsKernelModeToolset Condition="'$(IsKernelModeToolset)' == ''">true</IsKernelModeToolset>
+    <DDKPlatform Condition="'$(DDKPlatform)' == '' and '$(Platform)' == 'x64'">x64</DDKPlatform>
+    <WDKBuildFolder Condition="'$(WDKBuildFolder)' == ''">$(WindowsTargetPlatformVersion)</WDKBuildFolder>
+  </PropertyGroup>
+
+  <!-- Base C++ linker + MSBuild task wiring (v143). -->
+  <Import Project="$(VCTargetsPath)\Platforms\$(Platform)\PlatformToolsets\v143\Toolset.targets" />
+
+  <!-- WDK driver build targets (compile/link/sign/wpp tasks for drivers). -->
+  <Import Project="$(WDKContentRoot)\build\$(WDKBuildFolder)\WindowsDriver.Common.targets" />
+</Project>

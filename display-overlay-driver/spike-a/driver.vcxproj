@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{3A2A9F0B-7C4E-4B1D-9F2A-0B1C2D3E4F51}</ProjectGuid>
+    <RootNamespace>NativelyOverlay</RootNamespace>
+    <Keyword>WDKProj</Keyword>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>WDM</DriverType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <!-- Spectre mitigation off for the spike: SpectreMitigation=Spectre triggers MSBuild's
+         generic (user-mode) spectre-CRT check (MSB8040), which needs the _spectre libs that
+         the VS installer would provide but the broken VS instance DB on this box can't add.
+         The kernel build applies its own spectre defines/libs; Spectre is not the point of
+         this spike (build + load + IOCTL round-trip is). -->
+    <SpectreMitigation></SpectreMitigation>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <OutDir>$(MSBuildProjectDirectory)\bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildProjectDirectory)\obj\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>NativelyOverlay</TargetName>
+    <TargetExt>.sys</TargetExt>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <TreatWarningAsError>false</TreatWarningAsError>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="driver.c" />
+    <ClInclude Include="overlay_ioctl.h" />
+  </ItemGroup>
+  <!-- WDK is consumed via NuGet (not the VS WDK workload, which is not installed on
+       this box). Restoring this package pulls Microsoft.Windows.WDK.x64 plus its
+       Microsoft.Windows.SDK.cpp.x64 dependency; the WindowsKernelModeDriver10.0
+       toolset and the km headers/libs come from the package (WDKContentRoot), while
+       ucrt/um/shared come from the globally-installed Windows SDK. See build.ps1. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.WDK.x64" Version="10.0.26100.6584" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

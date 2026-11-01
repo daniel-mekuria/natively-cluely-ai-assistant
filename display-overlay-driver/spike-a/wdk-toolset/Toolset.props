@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Reconstructed WindowsKernelModeDriver10.0 toolset shim (props side).
+
+  WHY THIS EXISTS:
+  The VS WDK *workload* normally installs this Toolset.props/Toolset.targets pair under
+  <VS>\MSBuild\Microsoft\VC\v170\Platforms\x64\PlatformToolsets\WindowsKernelModeDriver10.0\.
+  The WDK *NuGet package* (Microsoft.Windows.WDK.x64) ships all the WDK content (km/um/shared
+  headers, km libs, and every WindowsDriver.* build file) but does NOT ship this toolset shim.
+  Since this box cannot install the VS WDK workload (broken VS instance DB), we reconstruct
+  the shim: it redirects to the v143 compiler toolset (the WDK "cl" IS the VS cl; the WDK only
+  adds kernel headers/libs/flags) and layers the WDK kernel build files on top.
+
+  Everything WDK-specific resolves from $(WDKContentRoot) (the restored package's 'c' folder).
+  build.ps1 deploys this whole folder into the v170 VCTargetsPath and passes WDKContentRoot +
+  WDKBuildFolder as global MSBuild properties so they are set before this file is imported.
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <!-- We are building kernel mode; gates the WDK kernel props/targets. -->
+    <IsKernelModeToolset Condition="'$(IsKernelModeToolset)' == ''">true</IsKernelModeToolset>
+    <!-- WDK arch folder name (km lib/include subfolder); mirrors $(Platform). -->
+    <DDKPlatform Condition="'$(DDKPlatform)' == '' and '$(Platform)' == 'x64'">x64</DDKPlatform>
+    <!-- WDK "build\" subfolder == target platform version. Not set anywhere in the package
+         (the workload normally sets it); $(WindowsTargetPlatformVersion) is 10.0.26100.0. -->
+    <WDKBuildFolder Condition="'$(WDKBuildFolder)' == ''">$(WindowsTargetPlatformVersion)</WDKBuildFolder>
+  </PropertyGroup>
+
+  <!-- Base C++ compiler/linker toolset (v143, from VS BuildTools). The WDK does not ship its
+       own compiler; it reuses v143's cl and adds the kernel headers/libs/defines. -->
+  <Import Project="$(VCTargetsPath)\Platforms\$(Platform)\PlatformToolsets\v143\Toolset.props" />
+
+  <!-- WDK versioning / target props: sets TargetPlatformVersion, WDKBinRoot, MatchingWdkPresent,
+       and the NTDDI/_WIN32_WINNT target constants. -->
+  <Import Project="$(WDKContentRoot)\build\$(WDKBuildFolder)\WindowsDriver.Default.props" />
+
+  <!-- WDK path variables: KM_IncludePath, CRT_IncludePath, KIT_SHARED_INC_PATH_WDK,
+       WindowsDDK_LibraryPath, DDK_LibraryPath_DDKPlatform, ...  All resolve from
+       $(WDKContentRoot). Must come before the WindowsDriver.* props that consume them. -->
+  <Import Project="$(WDKContentRoot)\DesignTime\CommonConfiguration\Neutral\WDK\$(WindowsTargetPlatformVersion)\WDK.props" />
+
+  <!-- The full WDK kernel-mode build props chain. This is the exact file the WDK workload's
+       ImportAfter mechanism drives; it cascades into:
+         WindowsDriver.common.props      -> WindowsDriver.Shared.Props, WindowsDriver.x64.props
+         WindowsDriver.KernelMode.Default.props
+         WindowsDriver.KernelMode.props  -> WindowsDriver.KernelMode.Wdm.props
+         WindowsDriver.KernelMode.LateEvaluation.props
+         WindowsDriver.LateEvaluation.props -->
+  <Import Project="$(WDKContentRoot)\build\$(WDKBuildFolder)\$(Platform)\ImportAfter\WDK.$(Platform).WindowsKernelModeDriver.Platform.props" />
+</Project>
