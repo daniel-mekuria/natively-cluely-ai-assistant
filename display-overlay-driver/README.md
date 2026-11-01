@@ -14,7 +14,7 @@ the plan at `.claude/plans/ethereal-herding-snowflake.md`.
 | --- | --- | --- |
 | 0 | Feasibility PoC (user-mode flip-model swap chain) | **Done — No-Go for a plain flip chain** (see `../display-overlay-poc/`) |
 | A | KMD build/sign/load/IPC pipeline probe | **Done — proven** (this dir, `spike-a/`) |
-| B | Overlay-plane compositing mechanism (driver present path + go/no-go) | In progress |
+| B | Overlay-plane compositing mechanism (driver go/no-go) | **In progress — M1 (user-mode `FLIP_SEQUENTIAL`) is No-Go on this Intel Arc** (windowless not creatable, `0x887A0001`); proceeding to **M2 (WDDM display KMD)**. See `phase-b/DESIGN.md`. |
 | C | Production KMD (harden the spike, real CA signing → no-reboot load) | Planned |
 | D | OSR overlay render → texture hand-off to the driver | Planned |
 | E | Input without a window (`WH_MOUSE_LL` rect routing + drag) | Planned |
@@ -126,6 +126,15 @@ enumerable by `EnumWindows` (the existence tell survives) and, being DWM-composi
 pixels live in the captured DWM desktop surface. Exclusive-fullscreen flip (DirectFlip)
 is not creatable on this Intel Arc iGPU (`0x887a0001`). → the path forward is a hardware
 video-overlay plane / display driver (Phases B–C).
+
+A second binary, `src/bin/phase-b-flipseq.rs` (Phase B / M1 probe), tests the
+`FLIP_SEQUENTIAL` "video overlay" swap effect — the one user-mode path that *might* route
+pixels to a post-DWM GPU overlay plane without a driver. **Result on this box:** the
+windowless (fullscreen) variant fails to create with the *same* `0x887A0001` as DirectFlip
+(so no user-mode overlay plane exists here), and the windowed variant is a plain
+DWM-composited flip chain (its pixels are in the captured surface + it owns a window).
+→ **M1 is No-Go for a windowless Tier C overlay on this Intel Arc**; the overlay plane must
+come from **M2 (a WDDM display KMD)**. Full findings: `phase-b/DESIGN.md`.
 
 ## Environment note
 
